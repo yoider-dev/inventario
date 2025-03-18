@@ -1,0 +1,96 @@
+from flask import Flask, render_template, request, redirect, url_for, flash
+import sqlite3
+import os
+
+app = Flask(__name__)
+app.secret_key = "inventario_secret"
+
+def conectar_bd():
+    return sqlite3.connect("inventario.db")
+
+def inicializar_bd():
+    with conectar_bd() as con:
+        cur = con.cursor()
+        cur.execute('''CREATE TABLE IF NOT EXISTS productos (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        nombre TEXT NOT NULL,
+                        cantidad INTEGER NOT NULL,
+                        precio REAL NOT NULL,
+                        fecha_compra TEXT,
+                        fecha_venta TEXT
+                    )''')
+        con.commit()
+
+@app.route('/')
+def index():
+    con = conectar_bd()
+    cur = con.cursor()
+    cur.execute("SELECT * FROM productos")
+    productos = cur.fetchall()
+    con.close()
+    return render_template("index.html", productos=productos)
+
+@app.route('/agregar', methods=['POST'])
+def agregar_producto():
+    nombre = request.form['nombre']
+    cantidad = int(request.form['cantidad'])
+    precio = float(request.form['precio'])
+    fecha_compra = request.form['fecha_compra']
+    
+    con = conectar_bd()
+    cur = con.cursor()
+    cur.execute("INSERT INTO productos (nombre, cantidad, precio, fecha_compra) VALUES (?, ?, ?, ?)",
+                (nombre, cantidad, precio, fecha_compra))
+    con.commit()
+    con.close()
+    
+    flash("Producto agregado correctamente")
+    return redirect(url_for("index"))
+
+@app.route('/eliminar/<int:id>')
+def eliminar_producto(id):
+    con = conectar_bd()
+    cur = con.cursor()
+    cur.execute("DELETE FROM productos WHERE id = ?", (id,))
+    con.commit()
+    con.close()
+    
+    flash("Producto eliminado correctamente")
+    return redirect(url_for("index"))
+
+@app.route('/calcular_iva/<int:id>')
+def calcular_iva(id):
+    con = conectar_bd()
+    cur = con.cursor()
+    cur.execute("SELECT precio FROM productos WHERE id = ?", (id,))
+    producto = cur.fetchone()
+    con.close()
+    
+    if producto:
+        precio = producto[0]
+        iva = precio * 0.16  # IVA del 16%
+        flash(f"El IVA del producto es: ${iva:.2f}")
+    else:
+        flash("Producto no encontrado")
+    
+    return redirect(url_for("index"))
+
+@app.route('/verificar_stock')
+def verificar_stock():
+    con = conectar_bd()
+    cur = con.cursor()
+    cur.execute("SELECT nombre FROM productos WHERE cantidad <= 0")
+    agotados = cur.fetchall()
+    con.close()
+    
+    if agotados:
+        nombres = ", ".join([p[0] for p in agotados])
+        flash(f"Productos agotados: {nombres}")
+    else:
+        flash("No hay productos agotados")
+    
+    return redirect(url_for("index"))
+
+if __name__ == '__main__':
+    inicializar_bd()
+    app.run(debug=True)

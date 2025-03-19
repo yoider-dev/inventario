@@ -1,0 +1,123 @@
+import sqlite3
+
+# Conectar a la base de datos
+def conectar_bd():
+    return sqlite3.connect("inventario.db")
+
+# Inicializar la base de datos
+def inicializar_bd():
+    with conectar_bd() as con:
+        cur = con.cursor()
+        cur.execute('''CREATE TABLE IF NOT EXISTS productos (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        nombre TEXT NOT NULL,
+                        cantidad INTEGER NOT NULL,
+                        precio REAL NOT NULL,
+                        fecha_compra TEXT,
+                        fecha_venta TEXT
+                    )''')
+        con.commit()
+
+# Agregar un producto al inventario
+def agregar_producto():
+    nombre = input("Nombre del producto: ")
+    cantidad = int(input("Cantidad: "))
+    precio = float(input("Precio: "))
+    fecha_compra = input("Fecha de compra (YYYY-MM-DD): ")
+    
+    with conectar_bd() as con:
+        cur = con.cursor()
+        cur.execute("INSERT INTO productos (nombre, cantidad, precio, fecha_compra) VALUES (?, ?, ?, ?)",
+                    (nombre, cantidad, precio, fecha_compra))
+        con.commit()
+        print("✅ Producto agregado correctamente.")
+
+# Mostrar inventario
+def mostrar_inventario():
+    with conectar_bd() as con:
+        cur = con.cursor()
+        cur.execute("SELECT * FROM productos")
+        productos = cur.fetchall()
+        
+        print("\n📋 Inventario de la ferretería:")
+        print("-" * 60)
+        print(f"{'ID':<5}{'Nombre':<15}{'Cantidad':<10}{'Precio':<10}{'F. Compra':<15}{'F. Venta'}")
+        print("-" * 60)
+        for p in productos:
+            print(f"{p[0]:<5}{p[1]:<15}{p[2]:<10}{p[3]:<10}{p[4]:<15}{p[5] if p[5] else 'N/A'}")
+
+# Eliminar un producto
+def eliminar_producto():
+    mostrar_inventario()
+    id_producto = int(input("\nID del producto a eliminar: "))
+    
+    with conectar_bd() as con:
+        cur = con.cursor()
+        cur.execute("DELETE FROM productos WHERE id = ?", (id_producto,))
+        con.commit()
+        print("❌ Producto eliminado correctamente.")
+
+# Calcular el IVA de un producto
+def calcular_iva():
+    mostrar_inventario()
+    id_producto = int(input("\nID del producto para calcular el IVA: "))
+    
+    with conectar_bd() as con:
+        cur = con.cursor()
+        cur.execute("SELECT precio FROM productos WHERE id = ?", (id_producto,))
+        producto = cur.fetchone()
+        
+        if producto:
+            precio = producto[0]
+            iva = precio * 0.16  # Suponiendo un IVA del 16%
+            print(f"🧮 El IVA del producto es: ${iva:.2f}")
+        else:
+            print("❌ Producto no encontrado.")
+
+# Verificar si hay productos agotados
+def verificar_stock():
+    with conectar_bd() as con:
+        cur = con.cursor()
+        cur.execute("SELECT nombre FROM productos WHERE cantidad <= 0")
+        agotados = cur.fetchall()
+        
+        if agotados:
+            nombres = ", ".join([p[0] for p in agotados])
+            print(f"🚨 Productos agotados: {nombres}")
+        else:
+            print("✅ No hay productos agotados.")
+
+# Menú principal
+def menu():
+    inicializar_bd()
+    
+    while True:
+        print("\n🔹 Menú de Inventario 🔹")
+        print("1️⃣ Agregar producto")
+        print("2️⃣ Mostrar inventario")
+        print("3️⃣ Eliminar producto")
+        print("4️⃣ Calcular IVA")
+        print("5️⃣ Verificar productos agotados")
+        print("6️⃣ Salir")
+        
+        opcion = input("\nSelecciona una opción: ")
+        
+        if opcion == "1":
+            agregar_producto()
+        elif opcion == "2":
+            mostrar_inventario()
+        elif opcion == "3":
+            eliminar_producto()
+        elif opcion == "4":
+            calcular_iva()
+        elif opcion == "5":
+            verificar_stock()
+        elif opcion == "6":
+            print("👋 Saliendo del programa...")
+            break
+        else:
+            print("❌ Opción inválida, intenta de nuevo.")
+
+# Ejecutar el programa
+if __name__ == "__main__":
+    menu()

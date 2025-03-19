@@ -1,10 +1,9 @@
 import sqlite3
+from datetime import datetime
 
-# Conectar a la base de datos
 def conectar_bd():
     return sqlite3.connect("inventario.db")
 
-# Inicializar la base de datos
 def inicializar_bd():
     with conectar_bd() as con:
         cur = con.cursor()
@@ -18,106 +17,84 @@ def inicializar_bd():
                     )''')
         con.commit()
 
-# Agregar un producto al inventario
-def agregar_producto():
-    nombre = input("Nombre del producto: ")
-    cantidad = int(input("Cantidad: "))
-    precio = float(input("Precio: "))
-    fecha_compra = input("Fecha de compra (YYYY-MM-DD): ")
-    
+def agregar_producto(nombre, cantidad, precio, fecha_compra, fecha_venta=None):
     with conectar_bd() as con:
         cur = con.cursor()
-        cur.execute("INSERT INTO productos (nombre, cantidad, precio, fecha_compra) VALUES (?, ?, ?, ?)",
-                    (nombre, cantidad, precio, fecha_compra))
+        cur.execute("INSERT INTO productos (nombre, cantidad, precio, fecha_compra, fecha_venta) VALUES (?, ?, ?, ?, ?)",
+                    (nombre, cantidad, precio, fecha_compra, fecha_venta))
         con.commit()
-        print("✅ Producto agregado correctamente.")
 
-# Mostrar inventario
 def mostrar_inventario():
     with conectar_bd() as con:
         cur = con.cursor()
         cur.execute("SELECT * FROM productos")
         productos = cur.fetchall()
-        
-        print("\n📋 Inventario de la ferretería:")
-        print("-" * 60)
-        print(f"{'ID':<5}{'Nombre':<15}{'Cantidad':<10}{'Precio':<10}{'F. Compra':<15}{'F. Venta'}")
-        print("-" * 60)
+        print("ID | Nombre | Cantidad | Precio | Fecha Compra | Fecha Venta")
+        print("-" * 70)
         for p in productos:
-            print(f"{p[0]:<5}{p[1]:<15}{p[2]:<10}{p[3]:<10}{p[4]:<15}{p[5] if p[5] else 'N/A'}")
+            print(f"{p[0]} | {p[1]} | {p[2]} | ${p[3]:.2f} | {p[4]} | {p[5]}")
 
-# Eliminar un producto
-def eliminar_producto():
-    mostrar_inventario()
-    id_producto = int(input("\nID del producto a eliminar: "))
-    
-    with conectar_bd() as con:
-        cur = con.cursor()
-        cur.execute("DELETE FROM productos WHERE id = ?", (id_producto,))
-        con.commit()
-        print("❌ Producto eliminado correctamente.")
-
-# Calcular el IVA de un producto
-def calcular_iva():
-    mostrar_inventario()
-    id_producto = int(input("\nID del producto para calcular el IVA: "))
-    
+def calcular_iva(id_producto):
     with conectar_bd() as con:
         cur = con.cursor()
         cur.execute("SELECT precio FROM productos WHERE id = ?", (id_producto,))
         producto = cur.fetchone()
-        
         if producto:
-            precio = producto[0]
-            iva = precio * 0.16  # Suponiendo un IVA del 16%
-            print(f"🧮 El IVA del producto es: ${iva:.2f}")
+            iva = producto[0] * 0.16
+            print(f"El IVA del producto ID {id_producto} es: ${iva:.2f}")
         else:
-            print("❌ Producto no encontrado.")
+            print("Producto no encontrado.")
 
-# Verificar si hay productos agotados
 def verificar_stock():
     with conectar_bd() as con:
         cur = con.cursor()
         cur.execute("SELECT nombre FROM productos WHERE cantidad <= 0")
         agotados = cur.fetchall()
-        
         if agotados:
-            nombres = ", ".join([p[0] for p in agotados])
-            print(f"🚨 Productos agotados: {nombres}")
+            print("Productos agotados:", ", ".join(p[0] for p in agotados))
         else:
-            print("✅ No hay productos agotados.")
+            print("No hay productos agotados.")
 
-# Menú principal
-def menu():
-    inicializar_bd()
-    
-    while True:
-        print("\n🔹 Menú de Inventario 🔹")
-        print("1️⃣ Agregar producto")
-        print("2️⃣ Mostrar inventario")
-        print("3️⃣ Eliminar producto")
-        print("4️⃣ Calcular IVA")
-        print("5️⃣ Verificar productos agotados")
-        print("6️⃣ Salir")
-        
-        opcion = input("\nSelecciona una opción: ")
-        
-        if opcion == "1":
-            agregar_producto()
-        elif opcion == "2":
-            mostrar_inventario()
-        elif opcion == "3":
-            eliminar_producto()
-        elif opcion == "4":
-            calcular_iva()
-        elif opcion == "5":
-            verificar_stock()
-        elif opcion == "6":
-            print("👋 Saliendo del programa...")
-            break
-        else:
-            print("❌ Opción inválida, intenta de nuevo.")
-
-# Ejecutar el programa
 if __name__ == "__main__":
-    menu()
+    inicializar_bd()
+    productos = [
+        ("Martillo", 10, 5.50, "2024-03-01"),
+        ("Destornillador", 15, 3.20, "2024-03-02"),
+        ("Serrucho", 5, 12.00, "2024-03-03"),
+        ("Taladro", 7, 45.99, "2024-03-04"),
+        ("Clavos (1kg)", 20, 2.50, "2024-03-05"),
+        ("Tornillos (50pcs)", 30, 4.00, "2024-03-06"),
+        ("Llave Inglesa", 8, 10.75, "2024-03-07"),
+        ("Cinta métrica", 12, 6.50, "2024-03-08"),
+        ("Escalera", 4, 55.00, "2024-03-09"),
+        ("Caja de herramientas", 6, 25.00, "2024-03-10"),
+        ("Brocha", 10, 3.75, "2024-03-11"),
+        ("Rodillo de pintura", 10, 5.20, "2024-03-12"),
+        ("Llave de tubo", 9, 9.80, "2024-03-13"),
+        ("Pegamento industrial", 15, 7.50, "2024-03-14"),
+        ("Pala", 5, 14.30, "2024-03-15"),
+        ("Carretilla", 3, 40.00, "2024-03-16"),
+        ("Flexómetro", 7, 8.25, "2024-03-17"),
+        ("Alicate", 10, 6.70, "2024-03-18"),
+        ("Sierra circular", 2, 65.00, "2024-03-19"),
+        ("Lija (pack de 5)", 25, 3.00, "2024-03-20"),
+        ("Cerradura", 5, 18.99, "2024-03-21"),
+        ("Candado", 8, 9.50, "2024-03-22"),
+        ("Llave Allen (set)", 12, 7.80, "2024-03-23"),
+        ("Tubo PVC (1m)", 20, 4.25, "2024-03-24"),
+        ("Interruptor eléctrico", 10, 6.40, "2024-03-25"),
+        ("Enchufe", 15, 5.20, "2024-03-26"),
+        ("Cinta aislante", 25, 2.90, "2024-03-27"),
+        ("Guantes de trabajo", 10, 4.50, "2024-03-28"),
+        ("Casco de seguridad", 5, 22.00, "2024-03-29"),
+        ("Máscara de soldadura", 4, 30.00, "2024-03-30")
+    ]
+    
+    for producto in productos:
+        agregar_producto(*producto)
+    
+    print("Inventario cargado correctamente.")
+    mostrar_inventario()
+    verificar_stock()
+    calcular_iva(1)  # Cálculo de IVA del primer producto
+
